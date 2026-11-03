@@ -7,7 +7,7 @@ import type { LightingPalette } from './palette.ts';
 import { RollingClock } from './rolling-clock.ts';
 import { SkySampler } from './sky-sampler.ts';
 import { Timeline } from './timeline.ts';
-import { TerrainRenderer } from './renderer.ts';
+import type { TerrainRenderer } from './renderer.ts';
 
 function element<T extends HTMLElement>(id: string): T {
   const result = document.getElementById(id);
@@ -75,13 +75,15 @@ function showStatic(message: string): void {
   for (const button of [...speedButtons, editTime, nowButton]) button.disabled = true;
   timeline.setDisabled(true);
   applyPalette(FALLBACK_PALETTE);
-  fallback.onload = () => { fallback.hidden = false; status.classList.add('compatibility'); };
+  const reveal = () => { fallback.hidden = false; status.classList.add('compatibility'); };
+  fallback.onload = reveal;
   fallback.onerror = () => {
     fallback.hidden = true; status.classList.remove('compatibility');
     statusText.textContent = 'The static map could not be loaded. Please reload to retry.';
     map.setAttribute('aria-label', 'Map unavailable');
   };
-  fallback.src = `${import.meta.env.BASE_URL}terrain/fallback.png`;
+  if (fallback.complete && fallback.naturalWidth > 0) reveal();
+  else if (fallback.complete || !fallback.getAttribute('src')) fallback.src = `${import.meta.env.BASE_URL}terrain/fallback.png`;
   status.hidden = false; statusText.textContent = message;
   map.setAttribute('aria-label', 'Static afternoon terrain relief of Switzerland');
 }
@@ -89,20 +91,44 @@ function showStatic(message: string): void {
 async function load(): Promise<void> {
   if (loading) return;
   loading = true; status.hidden = false; statusText.textContent = 'Loading terrain…'; retry.hidden = true;
+  status.classList.remove('compatibility');
+  fallback.hidden = false;
+  applyPalette(FALLBACK_PALETTE);
+  let preparing = false;
+  let candidate: TerrainRenderer | undefined;
   try {
-    const probe = document.createElement('canvas');
-    const context = probe.getContext('webgl2');
-    if (!context) { showStatic('Live light needs WebGL2. Showing a static afternoon map.'); return; }
-    context.getExtension('WEBGL_lose_context')?.loseContext();
-    terrain = await TerrainRenderer.load(map);
+    if (typeof WebGL2RenderingContext === 'undefined') {
+      showStatic('Live light needs WebGL2. Showing a static afternoon map.'); return;
+    }
+    // Keep the preview/UI independent of downloading the large GPU module.
+    // WebGLRenderer creates the only context; a throwaway probe doubled setup.
+    const { TerrainRenderer } = await import('./renderer.ts');
+    candidate = await TerrainRenderer.load(map, () => {
+      preparing = true; statusText.textContent = 'Preparing live lighting…';
+    });
+    candidate.update(sky.at(clock.now(), clock.speed));
+    await candidate.prepare();
+    // Use the current instant after compilation; normal frames only start once ready.
     const light = sky.at(clock.now(), clock.speed);
-    terrain.update(light); applyPalette(paletteFor(light)); terrain.draw();
+    candidate.update(light);
+    performance.mark('terrain-first-frame-start');
+    candidate.draw();
+    performance.measure('terrain-first-frame', 'terrain-first-frame-start');
+    terrain = candidate; candidate = undefined;
+    applyPalette(paletteFor(light));
+    fallback.onload = fallback.onerror = null;
     status.hidden = true; fallback.hidden = true;
+    for (const button of [...speedButtons, editTime, nowButton]) button.disabled = false;
+    timeline.setDisabled(false);
     map.dataset.ready = 'true';
+    map.setAttribute('aria-label', 'North-up map of sunlight and moonlight on the mountains of Switzerland');
     refresh();
   } catch {
+    candidate?.dispose();
     terrain?.dispose(); terrain = undefined;
-    statusText.textContent = 'The terrain could not be loaded. Check your connection and try again.';
+    showStatic(preparing
+      ? 'Live lighting could not start. Showing a static afternoon map.'
+      : 'The live map could not be loaded. Showing a static afternoon map.');
     retry.hidden = false; map.dataset.ready = 'error';
   } finally { loading = false; }
 }
@@ -117,15 +143,19 @@ function frame(now: number): void {
   rolling.render(epoch, clock.speed, clock.paused);
   timeline.render(epoch);
   if (terrain && now - lastDraw >= 1000 / 30) {
-    const start = performance.now();
-    const light = sky.at(epoch, clock.speed);
-    const shadows = clock.speed > 1 || clock.paused || now - lastShadow > 500;
-    terrain.update(light, shadows);
-    applyPalette(paletteFor(light));
-    terrain.draw();
-    if (shadows) lastShadow = now;
-    terrain.measure(performance.now() - start);
-    lastDraw = Number.isFinite(lastDraw) ? now - ((now - lastDraw) % (1000 / 30)) : now;
+    try {
+      const start = performance.now();
+      const light = sky.at(epoch, clock.speed);
+      const shadows = clock.speed > 1 || clock.paused || now - lastShadow > 500;
+      terrain.update(light, shadows);
+      applyPalette(paletteFor(light));
+      terrain.draw();
+      if (shadows) lastShadow = now;
+      terrain.measure(performance.now() - start);
+      lastDraw = Number.isFinite(lastDraw) ? now - ((now - lastDraw) % (1000 / 30)) : now;
+    } catch {
+      showStatic('Live rendering was interrupted. Showing a static afternoon map.');
+    }
   }
   animation = requestAnimationFrame(frame);
 }

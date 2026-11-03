@@ -53,19 +53,22 @@ export class TerrainRenderer {
     this.gpu.shadowMap.enabled = true;
     this.gpu.shadowMap.type = PCFShadowMap;
     this.gpu.shadowMap.autoUpdate = false;
+    this.gpu.debug.onShaderError = () => { throw new Error('Live lighting shader could not be initialized.'); };
     this.gpu.domElement.setAttribute('aria-hidden', 'true');
 
+    performance.mark('terrain-geometry-start');
     const grid = terrainVertices(metadata, heights);
     this.geometry = new BufferGeometry();
     this.geometry.setAttribute('position', new BufferAttribute(grid.positions, 3));
+    this.geometry.setAttribute('normal', new BufferAttribute(grid.normals, 3));
     this.geometry.setAttribute('uv', new BufferAttribute(grid.uv, 2));
     this.geometry.setIndex(new BufferAttribute(grid.indices, 1));
-    this.geometry.computeVertexNormals();
     this.geometry.computeBoundingBox();
     this.bounds = this.geometry.boundingBox!.clone();
 
     this.material = createTerrainMaterial(mask, this.paint);
     this.solid = new TerrainSolid(metadata, heights, mask, readMaskRaster(mask));
+    performance.measure('terrain-geometry', 'terrain-geometry-start');
     this.backdrop = createShadowReceiver(this.paint);
     const terrain = new Mesh(this.geometry, this.material);
     terrain.castShadow = true;
@@ -91,10 +94,11 @@ export class TerrainRenderer {
     this.material.dispose = () => { mask.dispose(); disposeMask(); };
   }
 
-  static async load(container: HTMLElement): Promise<TerrainRenderer> {
+  static async load(container: HTMLElement, onPreparing: () => void = () => {}): Promise<TerrainRenderer> {
     const controller = new AbortController();
     const timeout = window.setTimeout(() => controller.abort(), 20_000);
     try {
+      performance.mark('terrain-download-start');
       const [metadataResponse, heightResponse, maskResponse] = await Promise.all([
         fetch(`${DATA_URL}metadata.json`, { signal: controller.signal }),
         fetch(`${DATA_URL}elevation.bin`, { signal: controller.signal }),
@@ -102,16 +106,27 @@ export class TerrainRenderer {
       ]);
       if (!metadataResponse.ok || !heightResponse.ok || !maskResponse.ok) throw new Error('Terrain could not be loaded.');
       const metadata = validateMetadata(await metadataResponse.json());
-      const heights = decodeElevations(await heightResponse.arrayBuffer(), metadata);
-      const maskUrl = URL.createObjectURL(await maskResponse.blob());
+      const [heightBuffer, maskBlob] = await Promise.all([heightResponse.arrayBuffer(), maskResponse.blob()]);
+      performance.measure('terrain-download', 'terrain-download-start');
+      const heights = decodeElevations(heightBuffer, metadata);
+      const maskUrl = URL.createObjectURL(maskBlob);
       try {
         const mask = await new TextureLoader().loadAsync(maskUrl);
+        onPreparing();
         try { return new TerrainRenderer(container, metadata, heights, mask); }
         catch (error) { mask.dispose(); throw error; }
       } finally { URL.revokeObjectURL(maskUrl); }
     } finally {
       clearTimeout(timeout);
     }
+  }
+
+  /** Let parallel shader compilation finish before submitting the first frame. */
+  async prepare(): Promise<void> {
+    performance.mark('terrain-shaders-start');
+    await this.gpu.compileAsync(this.scene, this.camera);
+    performance.measure('terrain-shaders', 'terrain-shaders-start');
+    if (this.disposed || this.gpu.getContext().isContextLost()) throw new Error('Live rendering is unavailable.');
   }
 
   private resize(): void {

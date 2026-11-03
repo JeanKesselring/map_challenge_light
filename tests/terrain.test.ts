@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { decodeElevations, terrainVertices, validateMetadata } from '../src/terrain.ts';
+import { BufferAttribute, BufferGeometry } from 'three';
 
 const metadata = {
   schemaVersion: 1, width: 3, height: 3, spacingMeters: 400, west: 600000, north: 200000,
@@ -33,4 +34,21 @@ test('terrain metadata rejects invalid bounds, encodings, and oversized grids', 
   assert.throws(() => validateMetadata({...metadata, width: 999999}));
   assert.throws(() => validateMetadata({...metadata, crs: 'EPSG:4326'}));
   assert.throws(() => validateMetadata({...metadata, countryBounds: [0,0,1,1]}));
+});
+
+test('prepared grid normals match Three.js area-weighted normals, including edges', () => {
+  const heights = new Uint16Array([100,700,200,400,1800,300,50,900,150]);
+  const grid = terrainVertices(metadata, heights);
+  const reference = new BufferGeometry();
+  reference.setAttribute('position', new BufferAttribute(grid.positions, 3));
+  reference.setIndex(new BufferAttribute(grid.indices, 1));
+  reference.computeVertexNormals();
+  try {
+    const expected = reference.getAttribute('normal');
+    for (let i = 0; i < heights.length; i++) {
+      assert.ok(Math.abs(grid.normals[i * 3] - expected.getX(i)) < 0.000001);
+      assert.ok(Math.abs(grid.normals[i * 3 + 1] - expected.getY(i)) < 0.000001);
+      assert.ok(Math.abs(grid.normals[i * 3 + 2] - expected.getZ(i)) < 0.000001);
+    }
+  } finally { reference.dispose(); }
 });
