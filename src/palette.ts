@@ -23,11 +23,25 @@ export function mixColor(a: string, b: string, fraction: number): string {
     .toString(16).padStart(2, '0')).join('');
 }
 
+const luminance = (color: string) => rgb(color).map(linear)
+  .reduce((sum, channel, i) => sum + channel * [0.2126, 0.7152, 0.0722][i], 0);
+
 export function contrast(a: string, b: string): number {
-  const luminance = (color: string) => rgb(color).map(linear)
-    .reduce((sum, channel, i) => sum + channel * [0.2126, 0.7152, 0.0722][i], 0);
   const x = luminance(a), y = luminance(b);
   return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05);
+}
+
+// Near the horizon, level ground gets almost no direct sunlight, so the
+// physical lit and skylight-only colours converge and the relief vanishes.
+// Illustratively deepen the daylight shadow, keeping its chromaticity.
+// Linear mixing with the night palette cannot fall below the lower contrast.
+export const MIN_DAYLIGHT_CONTRAST = 2.2;
+
+function deepen(shadow: string, background: string, minimum: number): string {
+  const current = luminance(shadow), target = (luminance(background) + 0.05) / minimum - 0.05;
+  if (current <= target) return shadow;
+  const gain = Math.max(0, target) / current;
+  return linearRGBToHex(rgb(shadow).map(value => linear(value) * gain));
 }
 
 export function paletteFor(state: Pick<LightState, 'sun' | 'daylight' | 'moonStrength' | 'solarObscuration'>): LightingPalette {
@@ -43,7 +57,8 @@ export function paletteFor(state: Pick<LightState, 'sun' | 'daylight' | 'moonStr
   const dim = (color: string) => obscuration === 0 ? color : linearRGBToHex(rgb(color)
     .map((value, i) => linear(value) * (1 - obscuration) + residualSky[i] * obscuration));
   const background = dim(mixColor(night, daylight.background, state.daylight));
-  const shadow = dim(mixColor(mixColor(colors.nightShadow, colors.moonShadow, moon), daylight.shadow, state.daylight));
+  const daylightShadow = deepen(daylight.shadow, daylight.background, MIN_DAYLIGHT_CONTRAST);
+  const shadow = dim(mixColor(mixColor(colors.nightShadow, colors.moonShadow, moon), daylightShadow, state.daylight));
   const darkInk = '#000000', lightInk = '#fffdf7';
   const ink = contrast(background, darkInk) >= contrast(background, lightInk) ? darkInk : lightInk;
   const preferredAccent = ink === darkInk ? '#b51e18' : '#ffd0bd';

@@ -4,7 +4,7 @@ import {
   PCFShadowMap, Scene, SRGBColorSpace, TextureLoader, WebGLRenderer,
 } from 'three';
 import type { MeshLambertMaterial } from 'three';
-import { lightDirection } from './astronomy.ts';
+import { lightDirection, TWILIGHT_ALTITUDE, twilightStrength } from './astronomy.ts';
 import type { LightState } from './astronomy.ts';
 import { FALLBACK_PALETTE, paletteFor } from './palette.ts';
 import { decodeElevations, terrainVertices, validateMetadata } from './terrain.ts';
@@ -21,6 +21,7 @@ export class TerrainRenderer {
   private readonly camera = new OrthographicCamera(-200, 200, 150, -150, 1, 1200);
   private readonly sun = new DirectionalLight('#ffffff', 2.6);
   private readonly moon = new DirectionalLight('#ffffff', 0);
+  private readonly twilight = new DirectionalLight('#ffffff', 0);
   private readonly paint = {
     litColor: { value: new Color(FALLBACK_PALETTE.background) },
     shadowColor: { value: new Color(FALLBACK_PALETTE.shadow) },
@@ -73,7 +74,8 @@ export class TerrainRenderer {
     const terrain = new Mesh(this.geometry, this.material);
     terrain.castShadow = true;
     terrain.receiveShadow = true;
-    this.scene.add(this.backdrop, terrain, this.solid, this.sun, this.sun.target, this.moon, this.moon.target);
+    // Keep all three lights in the scene so shader programs never recompile.
+    this.scene.add(this.backdrop, terrain, this.solid, this.sun, this.sun.target, this.moon, this.moon.target, this.twilight);
     for (const light of [this.sun, this.moon]) {
       light.castShadow = true;
       light.shadow.mapSize.set(2048, 2048);
@@ -158,12 +160,17 @@ export class TerrainRenderer {
     const palette = paletteFor(state);
     this.paint.litColor.value.set(palette.background);
     this.paint.shadowColor.value.set(palette.shadow);
+    const glow = twilightStrength(state.sun.altitude);
     this.paint.flatReference.value = state.sunStrength * Math.max(0, Math.sin(state.sun.altitude * Math.PI / 180))
-      + state.moonStrength * Math.max(0, Math.sin(state.moon.altitude * Math.PI / 180));
-    const presence = Math.min(1, (state.sunStrength + state.moonStrength) / 0.12);
+      + state.moonStrength * Math.max(0, Math.sin(state.moon.altitude * Math.PI / 180))
+      + glow * Math.sin(TWILIGHT_ALTITUDE * Math.PI / 180);
+    const presence = Math.min(1, (state.sunStrength + state.moonStrength + glow) / 0.12);
     this.paint.lightPresence.value = presence * presence * (3 - 2 * presence);
     this.sun.intensity = state.sunStrength;
     this.moon.intensity = state.moonStrength;
+    // Shadowless and direction-only: the target stays at the origin.
+    this.twilight.intensity = glow;
+    this.twilight.position.fromArray(lightDirection(state.sun.azimuth, TWILIGHT_ALTITUDE)).multiplyScalar(100);
     // Avoid filtering an inactive light's map; the tent kernel spends its taps
     // on the illuminating body, including during accelerated playback.
     this.sun.shadow.intensity = state.sunStrength > 0 ? 1 : 0;

@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { SkyModel, discOverlap, lightDirection, lunarTransmission } from '../src/astronomy.ts';
+import { SkyModel, discOverlap, lightDirection, lunarTransmission, twilightStrength } from '../src/astronomy.ts';
 import { SearchLunarEclipse } from 'astronomy-engine';
 
 const sky = new SkyModel();
@@ -32,6 +32,23 @@ test('moon phase affects moonlight and the Moon cannot illuminate from below the
     const state = sky.at(Date.UTC(2026, 0, 3, h));
     if (state.moon.altitude <= 0) assert.equal(state.moonStrength, 0);
   }
+});
+test('relief keeps a light source from sunset until nautical dusk', () => {
+  // Moonless evening: the renderer flattens relief below 0.12 combined strength.
+  const start = Date.parse('2026-11-03T15:30:00Z');
+  for (let minutes = 0; minutes <= 90; minutes++) {
+    const state = sky.at(start + minutes * 60_000);
+    if (state.sun.altitude < -9) break;
+    assert.equal(state.moonStrength, 0);
+    assert.ok(state.sunStrength + twilightStrength(state.sun.altitude) >= 0.12, `${minutes} min`);
+  }
+  assert.equal(twilightStrength(1), 0);
+  assert.equal(twilightStrength(-12), 0);
+});
+test('moonlight cannot wash out the shadows of a rising Sun', () => {
+  const state = at('2026-11-03T06:30:00Z');
+  assert.ok(state.sun.altitude > 0 && state.moon.altitude > 30 && state.moonFraction > 0.3);
+  assert.equal(state.moonStrength, 0);
 });
 test('solar eclipse visible from Switzerland dims the map', () => {
   const state = at('2015-03-20T09:35:00Z');

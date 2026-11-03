@@ -89,11 +89,25 @@ export class SkyModel {
       sun, moon, daylight, moonFraction, solarObscuration, lunarTransmission: transmission,
       sunStrength: sun.altitude > 0
         ? smoothstep(0, 5, sun.altitude) * (1 - solarObscuration) * 2.6 : 0,
+      // Moonlight ends by sunrise: level ground gets so little of a low Sun
+      // that any residual moonlight would wash out its long shadows.
       moonStrength: moon.altitude > 0
         ? smoothstep(0, 12, moon.altitude) * moonFraction * transmission
-          * (1 - smoothstep(-6, 8, sun.altitude)) * 1.3 : 0,
+          * (1 - smoothstep(-6, 0, sun.altitude)) * 1.3 : 0,
     };
   }
+}
+
+/** Elevation of the illustrative afterglow light; real twilight has no direction. */
+export const TWILIGHT_ALTITUDE = 10;
+
+/**
+ * Shadowless glow from the Sun's azimuth while it is just below the horizon.
+ * It replaces the fading direct beam so relief stays legible through civil
+ * and nautical twilight; it is illustrative, not a twilight radiance model.
+ */
+export function twilightStrength(sunAltitude: number): number {
+  return smoothstep(-12, -2, sunAltitude) * (1 - smoothstep(-1, 1, sunAltitude));
 }
 
 /** East, up, south: Three.js coordinates for a north-up map with +Y elevation. */

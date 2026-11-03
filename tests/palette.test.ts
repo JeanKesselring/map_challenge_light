@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { contrast, paletteFor, rgb, terrainColor } from '../src/palette.ts';
 import { SkyModel, smoothstep } from '../src/astronomy.ts';
+import { daylightColors } from '../src/daylight.ts';
 
 const luminance = (color: string) => rgb(color)
   .map(v => v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4)
@@ -15,6 +16,15 @@ test('fully lit terrain is exactly the page background at all times of day', () 
     assert.ok(contrast(palette.background, palette.ink) >= 4.5);
     assert.ok(contrast(palette.background, palette.accent) >= 3);
   }
+});
+test('lit and shadowed terrain stay distinct through sunrise and sunset', () => {
+  for (let altitude = -14; altitude <= 15; altitude += 0.25) for (const moonStrength of [0, 0.65, 1.3]) {
+    const palette = paletteFor({ daylight: smoothstep(-12, 4, altitude), sun: { altitude, azimuth: 240 }, moonStrength, solarObscuration: 0 });
+    assert.ok(contrast(palette.background, palette.shadow) >= 1.45, `${altitude}°`);
+  }
+  // The floor only applies near the horizon; the spectral afternoon is unchanged.
+  const afternoon = paletteFor({ daylight: 1, sun: { altitude: 45, azimuth: 240 }, moonStrength: 0, solarObscuration: 0 });
+  assert.equal(afternoon.shadow, daylightColors(45).shadow);
 });
 test('moonless nights and the deepest shadows remain visibly blue', () => {
   const palette = paletteFor({ daylight: 0, sun: { altitude: -20, azimuth: 180 }, moonStrength: 0, solarObscuration: 0 });
