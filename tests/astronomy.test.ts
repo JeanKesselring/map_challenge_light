@@ -38,12 +38,12 @@ test('relief keeps a light source from sunset until nautical dusk', () => {
   const start = Date.parse('2026-11-03T15:30:00Z');
   for (let minutes = 0; minutes <= 90; minutes++) {
     const state = sky.at(start + minutes * 60_000);
-    if (state.sun.altitude < -9) break;
+    if (state.sun.altitude < -12) break;
     assert.equal(state.moonStrength, 0);
     assert.ok(state.sunStrength + twilightStrength(state.sun.altitude) >= 0.12, `${minutes} min`);
   }
-  assert.equal(twilightStrength(1), 0);
-  assert.equal(twilightStrength(-12), 0);
+  assert.equal(twilightStrength(4), 0);
+  assert.equal(twilightStrength(-16), 0);
 });
 test('moonlight cannot wash out the shadows of a rising Sun', () => {
   const state = at('2026-11-03T06:30:00Z');

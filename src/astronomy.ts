@@ -84,7 +84,7 @@ export class SkyModel {
     const moonFraction = Illumination(Body.Moon, date).phase_fraction;
     // Twilight is independent of an eclipse. Apply occultation after display
     // exposure so the renderer cannot normalise the lost sunlight back up.
-    const daylight = smoothstep(-12, 4, sun.altitude);
+    const daylight = smoothstep(-16, 6, sun.altitude);
     return {
       sun, moon, daylight, moonFraction, solarObscuration, lunarTransmission: transmission,
       sunStrength: sun.altitude > 0
@@ -104,10 +104,10 @@ export const TWILIGHT_ALTITUDE = 10;
 /**
  * Shadowless glow from the Sun's azimuth while it is just below the horizon.
  * It replaces the fading direct beam so relief stays legible through civil
- * and nautical twilight; it is illustrative, not a twilight radiance model.
+ * twilight into night; it is illustrative, not a twilight radiance model.
  */
 export function twilightStrength(sunAltitude: number): number {
-  return smoothstep(-12, -2, sunAltitude) * (1 - smoothstep(-1, 1, sunAltitude));
+  return smoothstep(-16, -2, sunAltitude) * (1 - smoothstep(-1, 4, sunAltitude));
 }
 
 /** East, up, south: Three.js coordinates for a north-up map with +Y elevation. */

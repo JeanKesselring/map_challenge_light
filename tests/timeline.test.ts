@@ -27,8 +27,8 @@ test('cancel returns to the gesture origin and all seeks respect supported bound
 test('UTC ruler ticks skip the nonexistent Swiss spring hour', () => {
   const ticks = timelineTicks(Date.parse('2026-03-29T01:00:00Z'), 6);
   const major = ticks.filter(tick => tick.major && swissParts(tick.epoch).day === 29);
-  assert.ok(major.some(tick => tick.label === '01'));
-  assert.ok(major.some(tick => tick.label === '03'));
+  assert.ok(major.some(tick => tick.label === '01:00'));
+  assert.ok(major.some(tick => tick.label === '03:00'));
   assert.ok(!major.some(tick => tick.label.startsWith('02')));
 });
 test('repeated autumn hours have distinct zone labels at consecutive instants', () => {

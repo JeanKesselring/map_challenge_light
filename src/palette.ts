@@ -36,6 +36,7 @@ export function contrast(a: string, b: string): number {
 // Illustratively deepen the daylight shadow, keeping its chromaticity.
 // Linear mixing with the night palette cannot fall below the lower contrast.
 export const MIN_DAYLIGHT_CONTRAST = 2.2;
+export const SOFT_INK = '#33363c';
 
 function deepen(shadow: string, background: string, minimum: number): string {
   const current = luminance(shadow), target = (luminance(background) + 0.05) / minimum - 0.05;
@@ -59,10 +60,13 @@ export function paletteFor(state: Pick<LightState, 'sun' | 'daylight' | 'moonStr
   const background = dim(mixColor(night, daylight.background, state.daylight));
   const daylightShadow = deepen(daylight.shadow, daylight.background, MIN_DAYLIGHT_CONTRAST);
   const shadow = dim(mixColor(mixColor(colors.nightShadow, colors.moonShadow, moon), daylightShadow, state.daylight));
-  const darkInk = '#000000', lightInk = '#fffdf7';
-  const ink = contrast(background, darkInk) >= contrast(background, lightInk) ? darkInk : lightInk;
-  const preferredAccent = ink === darkInk ? '#b51e18' : '#ffd0bd';
-  const accent = contrast(background, preferredAccent) >= 3 ? preferredAccent : '#590604';
+  // Prefer a soft charcoal; only as twilight darkens the page does it deepen,
+  // continuously, toward black to keep 4.5:1. The accent deepens the same way.
+  // Small margins absorb 8-bit rounding.
+  const lightInk = '#fffdf7';
+  const dark = contrast(background, '#000000') >= contrast(background, lightInk);
+  const ink = dark ? deepen(SOFT_INK, background, 4.55) : lightInk;
+  const accent = dark ? deepen('#b51e18', background, 3.05) : '#ffd0bd';
   return { background, shadow, ink, accent };
 }
 

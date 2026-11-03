@@ -1,14 +1,19 @@
+/* Registered so the dark/light ink switch at dusk and dawn cross-fades. */
+@property --ink { syntax: "<color>"; inherits: true; initial-value: #33363c; }
+@property --accent { syntax: "<color>"; inherits: true; initial-value: #b51e18; }
 :root {
   font-family: "Helvetica Neue", Helvetica, sans-serif;
   font-synthesis: none;
   font-weight: 400;
   --page: #f6eae2;
-  --ink: #000000;
+  --ink: #33363c;
   --accent: #b51e18;
   --rule: color-mix(in srgb, var(--ink) 27%, transparent);
   color: var(--ink);
   background: var(--page);
+  transition: --ink 1.6s ease-in-out, --accent 1.6s ease-in-out;
 }
+@media (prefers-reduced-motion: reduce) { :root { transition: none; } }
 * { box-sizing: border-box; }
 body { margin: 0; }
 button, input, select { font: inherit; color: inherit; }

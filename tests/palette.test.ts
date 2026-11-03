@@ -19,7 +19,7 @@ test('fully lit terrain is exactly the page background at all times of day', () 
 });
 test('lit and shadowed terrain stay distinct through sunrise and sunset', () => {
   for (let altitude = -14; altitude <= 15; altitude += 0.25) for (const moonStrength of [0, 0.65, 1.3]) {
-    const palette = paletteFor({ daylight: smoothstep(-12, 4, altitude), sun: { altitude, azimuth: 240 }, moonStrength, solarObscuration: 0 });
+    const palette = paletteFor({ daylight: smoothstep(-16, 6, altitude), sun: { altitude, azimuth: 240 }, moonStrength, solarObscuration: 0 });
     assert.ok(contrast(palette.background, palette.shadow) >= 1.45, `${altitude}°`);
   }
   // The floor only applies near the horizon; the spectral afternoon is unchanged.
@@ -41,7 +41,7 @@ test('eclipse dimming survives daylight exposure and final palette conversion', 
   const sky = new SkyModel();
   for (const date of ['1999-08-11T10:30:00Z', '2015-03-20T09:35:00Z', '2026-08-12T18:18:53Z']) {
     const state = sky.at(Date.parse(date));
-    assert.equal(state.daylight, smoothstep(-12, 4, state.sun.altitude), 'twilight and eclipse attenuation stay separate');
+    assert.equal(state.daylight, smoothstep(-16, 6, state.sun.altitude), 'twilight and eclipse attenuation stay separate');
     const eclipsed = paletteFor(state), clear = paletteFor({ ...state, solarObscuration: 0 });
     const remaining = 1 - state.solarObscuration;
     assert.ok(luminance(eclipsed.background) < luminance(clear.background) * (remaining + 0.03));

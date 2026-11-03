@@ -17,7 +17,7 @@ export function timelineTicks(anchor: number, hours: number): TimelineTick[] {
     // Include offset abbreviations only when an hour repeats across the autumn change.
     const repeated = major && (swissParts(t - HOUR).hour === p.hour || swissParts(t + HOUR).hour === p.hour);
     result.push({ epoch: t, major,
-      label: major ? `${String(p.hour).padStart(2, '0')}${repeated ? ` ${p.zone}` : ''}` : '',
+      label: major ? `${String(p.hour).padStart(2, '0')}:00${repeated ? ` ${p.zone}` : ''}` : '',
       date: major && p.hour === 0 ? `${String(p.day).padStart(2, '0')}.${String(p.month).padStart(2, '0')}` : '',
     });
   }
