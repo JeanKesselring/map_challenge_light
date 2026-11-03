@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#f6eae2" />
+    <meta name="description" content="A quiet map of sunlight, moonlight, and mountain shadows across Switzerland." />
+    <title>Switzerland — Light</title>
+    <link rel="icon" type="image/svg+xml" href="./icon.svg" />
+  </head>
+  <body>
+    <main>
+      <header class="masthead">
+        <h1>Switzerland<span class="divider" aria-hidden="true">/</span><span class="subtitle">Light</span></h1>
+      </header>
+
+      <div id="map" class="map" role="img" aria-label="North-up map of sunlight and moonlight on the mountains of Switzerland">
+        <img id="fallback" class="fallback" alt="Static afternoon relief of Switzerland" hidden />
+      </div>
+      <div id="status" class="status" role="status">
+        <span id="status-text">Loading terrain<span class="loading-dots" aria-hidden="true">…</span></span>
+        <button id="retry" type="button" hidden>Retry</button>
+      </div>
+
+      <div id="timeline" class="timeline" role="slider" tabindex="0" aria-label="Simulation time ruler" aria-orientation="horizontal" aria-describedby="timeline-help">
+        <div class="ruler-ticks" aria-hidden="true"></div>
+        <span class="ruler-marker" aria-hidden="true"></span>
+      </div>
+      <p id="timeline-help" class="sr-only">Drag or scroll to change time. Arrow keys move fifteen minutes; hold Shift for one hour. Page Up and Page Down move twenty-four hours.</p>
+
+      <nav class="controls" aria-label="Simulation time">
+        <button id="now" class="now" type="button"><span class="now-dot" aria-hidden="true"></span>Now</button>
+        <button id="edit-time" class="time-button" type="button" aria-haspopup="dialog" aria-controls="time-dialog" aria-label="Choose date and time in Switzerland">
+          <time id="timestamp"><span class="clock-date" aria-hidden="true"></span><span class="clock-digits" aria-hidden="true"></span><span class="clock-readable sr-only"></span></time><span id="timezone" class="timezone">Swiss time</span>
+          <svg viewBox="0 0 12 12" width="12" height="12" aria-hidden="true"><path d="m3 4.5 3 3 3-3" fill="none" stroke="currentColor" stroke-width="1.2"/></svg>
+        </button>
+        <div class="speeds" role="group" aria-label="Playback speed">
+          <button type="button" data-speed="1" aria-pressed="true" aria-label="1 times speed">1×</button>
+          <button type="button" data-speed="10" aria-pressed="false" aria-label="10 times speed">10×</button>
+          <button type="button" data-speed="100" aria-pressed="false" aria-label="100 times speed">100×</button>
+          <button type="button" data-speed="1000" aria-pressed="false" aria-label="1000 times speed">1000×</button>
+        </div>
+      </nav>
+      <footer><a href="https://www.swisstopo.admin.ch/en/height-model-dhm25-200m" target="_blank" rel="noopener noreferrer">© swisstopo</a></footer>
+    </main>
+
+    <dialog id="time-dialog" aria-labelledby="dialog-title" aria-describedby="date-help">
+      <form id="time-form" novalidate>
+        <div class="dialog-heading"><h2 id="dialog-title">Date &amp; time</h2><button id="close-dialog" class="close-button" type="button" aria-label="Close date and time">×</button></div>
+        <div class="month-navigation">
+          <button id="previous-month" class="month-arrow" type="button" aria-label="Previous month">←</button>
+          <label class="sr-only" for="calendar-month">Month</label><select id="calendar-month" aria-controls="calendar-grid"></select>
+          <label class="sr-only" for="calendar-year">Year</label><input id="calendar-year" type="number" min="1900" max="2100" inputmode="numeric" aria-controls="calendar-grid" aria-describedby="date-error" />
+          <button id="next-month" class="month-arrow" type="button" aria-label="Next month">→</button>
+        </div>
+        <div class="weekdays" aria-hidden="true"><span>Mo</span><span>Tu</span><span>We</span><span>Th</span><span>Fr</span><span>Sa</span><span>Su</span></div>
+        <div id="calendar-grid" role="grid" aria-label="Calendar"></div>
+        <fieldset class="time-fields"><legend>Time <span>Europe / Zurich</span></legend>
+          <div class="time-input-row">
+          <label><span>HH</span><input id="hour-input" type="text" inputmode="numeric" maxlength="2" pattern="[0-9]{1,2}" aria-label="Hour, zero to twenty-three" aria-describedby="date-error" required /></label>
+          <span class="time-colon" aria-hidden="true">:</span>
+          <label><span>MM</span><input id="minute-input" type="text" inputmode="numeric" maxlength="2" pattern="[0-9]{1,2}" aria-label="Minute, zero to fifty-nine" aria-describedby="date-error" required /></label>
+          <span class="time-colon" aria-hidden="true">:</span>
+          <label><span>SS</span><input id="second-input" type="text" inputmode="numeric" maxlength="2" pattern="[0-9]{1,2}" aria-label="Second, zero to fifty-nine" aria-describedby="date-error" required /></label>
+          </div>
+        </fieldset>
+        <p id="date-help" class="field-note">Swiss time · 1900–2100. Daylight saving applies; repeated autumn times use the first occurrence.</p>
+        <p id="date-error" class="field-error" role="alert"></p>
+        <div class="dialog-actions"><button id="cancel" type="button">Cancel</button><button class="apply" type="submit">Apply</button></div>
+      </form>
+    </dialog>
+    <noscript><p class="no-script">Enable JavaScript to explore the light map.</p></noscript>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

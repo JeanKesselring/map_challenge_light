@@ -1,0 +1,10 @@
+node_modules/
+dist/
+.venv/
+__pycache__/
+local/
+output/
+.playwright-cli/
+.DS_Store
+*.tsbuildinfo
+

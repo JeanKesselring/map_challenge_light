@@ -1,0 +1,8 @@
+{
+  "name": "astronomy-engine",
+  "version": "0.0.0-vendored.20261103",
+  "description": "MIT-licensed Astronomy Engine browser build by Don Cross",
+  "main": "index.mjs",
+  "types": "index.d.ts",
+  "license": "MIT"
+}

@@ -1,0 +1,12 @@
+{
+  "pressurePa": 95461,
+  "precipitableWaterCm": 1.5,
+  "ozoneAtmCm": 0.3,
+  "aerosolOpticalDepth500": 0.1,
+  "angstromExponent": 1.14,
+  "singleScatteringAlbedo400": 0.945,
+  "albedoWavelengthVariation": 0.095,
+  "aerosolAsymmetry": 0.65,
+  "groundAlbedo": 0.2,
+  "displayWhiteLevel": 0.92
+}

@@ -1,0 +1,41 @@
+{
+  "width": 963,
+  "height": 601,
+  "spacingMeters": 400,
+  "west": 480000.0,
+  "north": 302000.0,
+  "crs": "EPSG:21781",
+  "rowOrder": "north-to-south",
+  "heightEncoding": "uint16-le-metres-LN02",
+  "missingCells": 211817,
+  "countryBounds": [
+    485410.21499999985,
+    75271.62800000003,
+    833839.8849999998,
+    295933.6980000001
+  ],
+  "schemaVersion": 1,
+  "sources": {
+    "elevation": {
+      "url": "https://data.geo.admin.ch/ch.swisstopo.digitales-hoehenmodell_25/data.zip",
+      "edition": "DHM25 / 200 m downloadable release",
+      "crs": "EPSG:21781",
+      "sha256": "9d283f198f829202e09859954d54553001f7ff1a79e3614ad47ac9cd98641887"
+    },
+    "boundary": {
+      "url": "https://data.geo.admin.ch/ch.swisstopo.swissboundaries3d/swissboundaries3d_2026-01/swissboundaries3d_2026-01_2056_5728.shp.zip",
+      "edition": "swissBOUNDARIES3D 2026-01",
+      "crs": "EPSG:2056",
+      "sha256": "a467d7eec8395d746253c68095c75a2540b52064bc83a6b35cf101efb625733d"
+    }
+  },
+  "boundaryAlignment": "LV95 to LV03 grid-origin shift (-2000000, -1000000 m); metre-scale residuals",
+  "edgeLimitation": "Terrain retained within source coverage; missing elevations are zero. Foreign terrain beyond coverage cannot cast shadows.",
+  "observer": {
+    "latitude": 46.8,
+    "longitude": 8.2,
+    "heightMeters": 500
+  },
+  "maskWidth": 2048,
+  "maskHeight": 1277
+}

@@ -1,0 +1,15 @@
+{
+  "elevation": {
+    "url": "https://data.geo.admin.ch/ch.swisstopo.digitales-hoehenmodell_25/data.zip",
+    "edition": "DHM25 / 200 m downloadable release",
+    "crs": "EPSG:21781"
+  },
+  "boundary": {
+    "url": "https://data.geo.admin.ch/ch.swisstopo.swissboundaries3d/swissboundaries3d_2026-01/swissboundaries3d_2026-01_2056_5728.shp.zip",
+    "edition": "swissBOUNDARIES3D 2026-01",
+    "crs": "EPSG:2056"
+  },
+  "spacingMeters": 400,
+  "maskWidth": 2048,
+  "observer": { "latitude": 46.8, "longitude": 8.2, "heightMeters": 500 }
+}
