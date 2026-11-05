@@ -22,11 +22,13 @@ export function interpolateSky(a: LightState, b: LightState, fraction: number): 
 
 /** Cache ephemeris samples; the renderer interpolates at its own frame rate. */
 export class SkySampler {
-  private readonly sky = new SkyModel();
+  private readonly sky: SkyModel;
   private start = Number.NaN;
   private interval = 0;
   private left: LightState | undefined;
   private right: LightState | undefined;
+
+  constructor(sky = new SkyModel()) { this.sky = sky; }
 
   invalidate(): void { this.start = Number.NaN; }
 

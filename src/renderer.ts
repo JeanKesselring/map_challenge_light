@@ -7,13 +7,11 @@ import type { MeshLambertMaterial } from 'three';
 import { lightDirection, TWILIGHT_ALTITUDE, twilightStrength } from './astronomy.ts';
 import type { LightState } from './astronomy.ts';
 import { FALLBACK_PALETTE, paletteFor } from './palette.ts';
-import { decodeElevations, terrainVertices, validateMetadata } from './terrain.ts';
-import type { TerrainMetadata } from './terrain.ts';
+import { cullOutsideMask, decodeElevations, terrainVertices, validateMetadata } from './terrain.ts';
+import type { Heights, TerrainMetadata } from './terrain.ts';
 import { createShadowReceiver, fitDirectionalShadow, layoutShadowReceiver } from './shadows.ts';
 import { createTerrainMaterial } from './terrain-material.ts';
 import { readMaskRaster, TerrainSolid } from './terrain-solid.ts';
-
-const DATA_URL = `${import.meta.env.BASE_URL}terrain/`;
 
 export class TerrainRenderer {
   private readonly gpu: WebGLRenderer;
@@ -44,7 +42,7 @@ export class TerrainRenderer {
   private readonly container: HTMLElement;
 
   private constructor(container: HTMLElement, metadata: TerrainMetadata,
-    heights: Uint16Array, mask: Awaited<ReturnType<TextureLoader['loadAsync']>>) {
+    heights: Heights, mask: Awaited<ReturnType<TextureLoader['loadAsync']>>) {
     this.container = container;
     this.metadata = metadata;
     this.gpu = new WebGLRenderer({ antialias: true, alpha: true, powerPreference: 'low-power' });
@@ -59,16 +57,17 @@ export class TerrainRenderer {
 
     performance.mark('terrain-geometry-start');
     const grid = terrainVertices(metadata, heights);
+    const raster = readMaskRaster(mask);
     this.geometry = new BufferGeometry();
     this.geometry.setAttribute('position', new BufferAttribute(grid.positions, 3));
     this.geometry.setAttribute('normal', new BufferAttribute(grid.normals, 3));
     this.geometry.setAttribute('uv', new BufferAttribute(grid.uv, 2));
-    this.geometry.setIndex(new BufferAttribute(grid.indices, 1));
+    this.geometry.setIndex(new BufferAttribute(cullOutsideMask(metadata, grid.indices, raster), 1));
     this.geometry.computeBoundingBox();
     this.bounds = this.geometry.boundingBox!.clone();
 
     this.material = createTerrainMaterial(mask, this.paint);
-    this.solid = new TerrainSolid(metadata, heights, mask, readMaskRaster(mask));
+    this.solid = new TerrainSolid(metadata, heights, mask, raster);
     performance.measure('terrain-geometry', 'terrain-geometry-start');
     this.backdrop = createShadowReceiver(this.paint);
     const terrain = new Mesh(this.geometry, this.material);
@@ -90,15 +89,18 @@ export class TerrainRenderer {
     this.resize();
     this.gpu.domElement.addEventListener('webglcontextlost', event => {
       event.preventDefault();
+      // Releasing a replaced map's context is not a rendering failure.
+      if (this.disposed) return;
       container.dispatchEvent(new CustomEvent('render-failure'));
     });
     const disposeMask = this.material.dispose.bind(this.material);
     this.material.dispose = () => { mask.dispose(); disposeMask(); };
   }
 
-  static async load(container: HTMLElement, onPreparing: () => void = () => {}): Promise<TerrainRenderer> {
+  static async load(container: HTMLElement, terrainPath: string, onPreparing: () => void = () => {}): Promise<TerrainRenderer> {
     const controller = new AbortController();
     const timeout = window.setTimeout(() => controller.abort(), 20_000);
+    const DATA_URL = `${import.meta.env.BASE_URL}${terrainPath}`;
     try {
       performance.mark('terrain-download-start');
       const [metadataResponse, heightResponse, maskResponse] = await Promise.all([
@@ -221,6 +223,8 @@ export class TerrainRenderer {
     this.solid.dispose();
     this.sun.shadow.dispose();
     this.moon.shadow.dispose();
+    // Free this context now: switching regions must not accumulate them.
+    this.gpu.forceContextLoss();
     this.gpu.dispose();
     this.gpu.domElement.remove();
   }

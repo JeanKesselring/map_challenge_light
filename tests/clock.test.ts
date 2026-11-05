@@ -13,15 +13,15 @@ test('changing speed preserves the displayed instant', () => {
   clock.setSpeed(1000, 1000);
   assert.equal(clock.now(1000), epoch + 1000);
   assert.equal(clock.now(2000), epoch + 1_001_000);
-  clock.setSpeed(10, 2000);
-  assert.equal(clock.now(3000), epoch + 1_011_000);
+  clock.setSpeed(10_000, 2000);
+  assert.equal(clock.now(3000), epoch + 11_001_000);
 });
 test('date selection changes time without changing speed', () => {
   const clock = new SimulationClock(epoch, 0);
-  clock.setSpeed(100, 100);
+  clock.setSpeed(10_000, 100);
   clock.setTime(epoch + 86_400_000, 1000);
-  assert.equal(clock.now(2000), epoch + 86_500_000);
-  assert.equal(clock.speed, 100);
+  assert.equal(clock.now(2000), epoch + 96_400_000);
+  assert.equal(clock.speed, 10_000);
 });
 test('Now resets both instant and playback speed', () => {
   const clock = new SimulationClock(epoch, 0);
@@ -32,8 +32,8 @@ test('Now resets both instant and playback speed', () => {
 });
 test('tab suspension catches up using elapsed monotonic time', () => {
   const clock = new SimulationClock(epoch, 10);
-  clock.setSpeed(10, 10);
-  assert.equal(clock.now(3_600_010), epoch + 36_000_000);
+  clock.setSpeed(10_000, 10);
+  assert.equal(clock.now(3_600_010), epoch + 36_000_000_000);
 });
 test('clock is bounded by the supported Swiss calendar range', () => {
   const clock = new SimulationClock(MAX_TIME - 100, 0);
@@ -55,7 +55,7 @@ test('scrubbing holds time and resumes the selected speed without counting the p
 test('changing speed during a pause preserves the held instant and Now clears the pause', () => {
   const clock = new SimulationClock(epoch, 0);
   clock.pause(100);
-  clock.setSpeed(100, 1000);
+  clock.setSpeed(10_000, 1000);
   assert.equal(clock.now(5000), epoch + 100);
   clock.reset(epoch + 1000, 6000);
   assert.equal(clock.paused, false);

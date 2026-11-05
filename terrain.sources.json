@@ -11,5 +11,20 @@
   },
   "spacingMeters": 400,
   "maskWidth": 2048,
-  "observer": { "latitude": 46.8, "longitude": 8.2, "heightMeters": 500 }
+  "observer": { "latitude": 46.8, "longitude": 8.2, "heightMeters": 500 },
+  "regions": {
+    "zurich": {
+      "canton": "Zürich",
+      "spacingMeters": 200,
+      "maskWidth": 1536,
+      "marginMeters": 1000,
+      "fineElevation": {
+        "edition": "swissALTI3D 2 m, newest edition per tile",
+        "catalogue": "https://data.geo.admin.ch/api/stac/v0.9/collections/ch.swisstopo.swissalti3d/items?bbox=8.33,47.13,9.02,47.72&limit=100",
+        "spacingMeters": 50,
+        "reachMeters": 300
+      },
+      "observer": { "latitude": 47.41, "longitude": 8.65, "heightMeters": 500 }
+    }
+  }
 }

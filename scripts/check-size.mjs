@@ -5,14 +5,18 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { decodeElevations, validateMetadata } from '../src/terrain.ts';
 
 const root = pathToFileURL(resolve(process.argv[2] ?? 'dist') + sep);
-const required = ['terrain/metadata.json', 'terrain/elevation.bin', 'terrain/mask.png', 'terrain/fallback.png', 'science-notice.txt'];
+const terrainDirectories = ['terrain/', 'terrain/zurich/'];
+const required = [...terrainDirectories.flatMap(directory =>
+  ['metadata.json', 'elevation.bin', 'mask.png', 'fallback.png'].map(name => directory + name)), 'science-notice.txt'];
 for (const name of required) {
   try { await stat(new URL(name, root)); }
   catch { throw new Error(`Missing production asset ${name}. Restore public assets; regenerate terrain with uv run scripts/prepare_terrain.py if needed.`); }
 }
-const metadata = validateMetadata(JSON.parse(await readFile(new URL('terrain/metadata.json', root), 'utf8')));
-const heights = await readFile(new URL('terrain/elevation.bin', root));
-decodeElevations(heights.buffer.slice(heights.byteOffset, heights.byteOffset + heights.byteLength), metadata);
+for (const directory of terrainDirectories) {
+  const metadata = validateMetadata(JSON.parse(await readFile(new URL(`${directory}metadata.json`, root), 'utf8')));
+  const heights = await readFile(new URL(`${directory}elevation.bin`, root));
+  decodeElevations(heights.buffer.slice(heights.byteOffset, heights.byteOffset + heights.byteLength), metadata);
+}
 const html = await readFile(new URL('index.html', root), 'utf8');
 for (const [, path] of html.matchAll(/(?:src|href)="([^"]+)"/g)) {
   if (path.startsWith('/')) throw new Error(`Absolute asset URL is incompatible with repository hosting: ${path}`);

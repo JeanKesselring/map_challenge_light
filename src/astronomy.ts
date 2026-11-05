@@ -3,7 +3,6 @@ import {
 } from 'astronomy-engine';
 import type { LunarEclipseInfo } from 'astronomy-engine';
 
-const OBSERVER = new Observer(46.8, 8.2, 500);
 const RAD = Math.PI / 180;
 const AU_KM = 149_597_870.7;
 
@@ -47,8 +46,13 @@ export function lunarTransmission(event: LunarEclipseInfo, epoch: number): numbe
 }
 
 export class SkyModel {
+  private readonly observer: Observer;
   private year = Number.NaN;
   private lunarEclipses: LunarEclipseInfo[] = [];
+
+  constructor(latitude = 46.8, longitude = 8.2, heightMeters = 500) {
+    this.observer = new Observer(latitude, longitude, heightMeters);
+  }
 
   private eclipses(date: Date): void {
     const year = date.getUTCFullYear();
@@ -68,10 +72,10 @@ export class SkyModel {
   at(epoch: number): LightState {
     const date = new Date(epoch);
     this.eclipses(date);
-    const sunEq = Equator(Body.Sun, date, OBSERVER, true, true);
-    const moonEq = Equator(Body.Moon, date, OBSERVER, true, true);
-    const sun = Horizon(date, OBSERVER, sunEq.ra, sunEq.dec, 'normal');
-    const moon = Horizon(date, OBSERVER, moonEq.ra, moonEq.dec, 'normal');
+    const sunEq = Equator(Body.Sun, date, this.observer, true, true);
+    const moonEq = Equator(Body.Moon, date, this.observer, true, true);
+    const sun = Horizon(date, this.observer, sunEq.ra, sunEq.dec, 'normal');
+    const moon = Horizon(date, this.observer, moonEq.ra, moonEq.dec, 'normal');
     const cosine = Math.sin(sunEq.dec * RAD) * Math.sin(moonEq.dec * RAD)
       + Math.cos(sunEq.dec * RAD) * Math.cos(moonEq.dec * RAD)
       * Math.cos((sunEq.ra - moonEq.ra) * 15 * RAD);

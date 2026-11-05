@@ -1,6 +1,6 @@
 # Switzerland / Light
 
-A fixed, north-up map of sunlight, moonlight, and terrain shadows across Switzerland. Static TypeScript, Three.js, and Astronomy Engine; no backend, API keys, live map services, or downloaded fonts.
+A fixed, north-up map of sunlight, moonlight, and terrain shadows. It opens on the Canton of Zurich; buttons in the top-right corner switch to all of Switzerland and back. Static TypeScript, Three.js, and Astronomy Engine; no backend, API keys, live map services, or downloaded fonts.
 
 ## Run locally
 
@@ -20,6 +20,18 @@ If the archives were downloaded separately, use:
 ```sh
 uv run scripts/prepare_terrain.py --elevation /path/to/data.zip --boundary /path/to/swissboundaries3d_2026-01_2056_5728.shp.zip
 ```
+
+## Map areas
+
+Each area in `src/regions.ts` has its own terrain files and Sun/Moon observer: Zurich at 50 m in `public/terrain/zurich/` (47.41° N, 8.65° E), Switzerland at 400 m in `public/terrain/` (46.8° N, 8.2° E). Prepare the canton with:
+
+```sh
+uv run scripts/prepare_terrain.py --region zurich --download
+```
+
+Zurich's heights come from [swissALTI3D](https://www.swisstopo.admin.ch/en/height-model-swissalti3d): the newest edition of each 2 m tile that touches the canton (about 2 GB, cached in ignored `local/data/swissalti3d/`), averaged to 50 m and stored in decimetres, because whole metres would show as terraces on gentle slopes. The grid subdivides the 200 m DHM25 grid, which supplies the preview image and any sample without a tile, so the mask and preview do not depend on the tiles. Triangles entirely outside the mask are not drawn, for either area.
+
+The canton's outline comes from the `KANTONSGEBIET` layer of the same boundary archive. As with the national map, only terrain inside the selected area casts shadows, so the Alps south of the canton do not shade it, and the closed terrain shell casts onto the flat backdrop. Switching keeps the current simulated time; the previous map stays visible until the next is ready, then it fades across.
 
 ## Terrain and licensing
 
@@ -44,7 +56,7 @@ The map opens at the current instant, at 1× speed. **Now** restores both. A scr
 
 The date button opens a Swiss-style custom calendar inside a native accessible dialog, with a Monday-first grid, editable year, month navigation, and separate 24-hour time fields. Arrow keys navigate dates, Page Up/Down changes month (hold Shift for a year), and Home/End moves within a week. Apply starts from the selected instant at the selected speed. Cancel and Escape leave playback running. Swiss time always means `Europe/Zurich`, regardless of the visitor's timezone. Spring DST gaps are rejected; repeated autumn times use the earlier occurrence and repeated ruler hours include their timezone. The supported range is 1900–2100; playback stops at its upper bound.
 
-Lighting is calculated at 46.8° N, 8.2° E. Sun and Moon cast separate terrain shadows. A shared linear-RGB palette makes fully lit, level ground match the page background, so slope and cast shadows define the map.
+Lighting is calculated at each map area's observer. Sun and Moon cast separate terrain shadows. A shared linear-RGB palette makes fully lit, level ground match the page background, so slope and cast shadows define the map.
 
 Daylight colours now come from spectral transmission, absorption and scattering through a representative clear atmosphere. SPECTRL2 computes separate direct-normal sunlight and diffuse-horizontal skylight spectra. Their sum on a horizontal, spectrally neutral surface supplies the lit colour; diffuse skylight supplies the shadow colour. The spectra are interpolated onto the CIE integration grid from 360–830 nm at 5 nm intervals, integrated to XYZ, and converted to sRGB with fixed D65 display white. One shared exposure fits lit and shaded colours into the display range, preserving their in-gamut chromaticities and relative brightness. It does not reproduce absolute outdoor brightness or viewer colour adaptation. At low Sun angles, blue skylight can dominate level ground even while the direct beam becomes orange/red. A bounded 0.1° cache interpolates XYZ values during playback.
 
@@ -82,7 +94,7 @@ npm run preview
 
 The build rejects missing terrain assets and a compressed static site above 5 MB. Tests cover the clock, scrubbing, DST ruler ticks, calendar navigation, odometer carries, palette matching/contrast, astronomical interpolation and eclipses, grid orientation, and terrain export. Spectral checks cover CIE reference integrals, D65 conversion, the vacuum limit, horizon behaviour, haze/pressure effects, direct/diffuse colours, common exposure and smooth interpolation. To validate an alternate build folder, run `node scripts/check-size.mjs path/to/build`.
 
-Before publication, check desktop/mobile layouts, keyboard-only dialog operation, missing-data retry, WebGL2 fallback, a low-angle ridge shadow, and 1000× playback performance on a mid-range device. Test the production build beneath a URL subpath; Vite's relative base keeps scripts and terrain URLs compatible with repository hosting.
+Before publication, check desktop/mobile layouts, keyboard-only dialog operation, missing-data retry, WebGL2 fallback, a low-angle ridge shadow, and 10'000× playback performance on a mid-range device. Test the production build beneath a URL subpath; Vite's relative base keeps scripts and terrain URLs compatible with repository hosting.
 
 Commit the prepared `public/terrain/` assets, then select **Settings → Pages → Build and deployment → GitHub Actions** in the GitHub repository. The included workflow tests and builds on pushes to `main`, then deploys `dist/`. The source archives are not downloaded during normal deployment. No separate Sites hosting account is needed.
 

@@ -1,7 +1,7 @@
 import { BufferAttribute, BufferGeometry, DoubleSide, Group, Mesh, MeshBasicMaterial,
   NearestFilter, PlaneGeometry } from 'three';
 import type { Texture } from 'three';
-import type { TerrainMetadata } from './terrain.ts';
+import type { Heights, TerrainMetadata } from './terrain.ts';
 
 export interface MaskRaster {
   width: number;
@@ -30,7 +30,7 @@ export function readMaskRaster(texture: Texture): MaskRaster {
   } finally { canvas.width = 1; canvas.height = 1; }
 }
 
-function boundaryWalls(metadata: TerrainMetadata, heights: Uint16Array, mask: MaskRaster): BufferGeometry {
+function boundaryWalls(metadata: TerrainMetadata, heights: Heights, mask: MaskRaster): BufferGeometry {
   validateDimensions(mask.width, mask.height);
   const channels = mask.data.length / (mask.width * mask.height);
   if ((channels !== 1 && channels !== 4) || heights.length !== metadata.width * metadata.height) {
@@ -97,7 +97,7 @@ export class TerrainSolid extends Group {
   private readonly walls: Mesh<BufferGeometry, MeshBasicMaterial>;
   private readonly base: Mesh<PlaneGeometry, MeshBasicMaterial>;
 
-  constructor(metadata: TerrainMetadata, heights: Uint16Array, texture: Texture, mask: MaskRaster) {
+  constructor(metadata: TerrainMetadata, heights: Heights, texture: Texture, mask: MaskRaster) {
     super();
     // Pixel edges are shared by roof, walls and bottom. Filtering the alpha
     // texture would move the roof boundary away from the physical wall.

@@ -1,4 +1,4 @@
-export const SPEEDS = [1, 10, 100, 1000] as const;
+export const SPEEDS = [1, 1000, 10_000] as const;
 export type Speed = (typeof SPEEDS)[number];
 export const MIN_TIME = Date.UTC(1899, 11, 31, 23);
 export const MAX_TIME = Date.UTC(2100, 11, 31, 22, 59, 59, 999);

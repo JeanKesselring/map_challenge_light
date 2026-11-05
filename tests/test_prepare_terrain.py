@@ -10,12 +10,13 @@ from zipfile import ZipFile
 import zlib
 
 from scripts.prepare_terrain import (
-    country_rings, dbf_records, download, png, polygon_records,
+    canton_rings, country_rings, crop_grid, dbf_records, download, fine_elevations,
+    lzw_decode, png, polygon_records, read_float_tiff, tile_bins, tiles_for_mask,
     fallback, prepare, raster_mask, read_grid,
 )
 
 
-def boundary_fixture(destination: Path) -> None:
+def boundary_fixture(destination: Path, layer: str = 'TLM_LANDESGEBIET', value: bytes = b' CH ') -> None:
     """Minimal valid national-territory archive in LV95 around the small LV03 grid."""
     coords = [(2600000, 1199600), (2600400, 1199600), (2600400, 1200000),
               (2600000, 1200000), (2600000, 1199600)]
@@ -33,10 +34,32 @@ def boundary_fixture(destination: Path) -> None:
     dbf[43] = ord('C')
     dbf[48] = 3
     dbf[64] = 13
-    dbf += b' CH '
+    dbf += value
     with ZipFile(destination, 'w') as archive:
-        archive.writestr('TLM_LANDESGEBIET.shp', shp)
-        archive.writestr('TLM_LANDESGEBIET.dbf', dbf)
+        archive.writestr(f'{layer}.shp', shp)
+        archive.writestr(f'{layer}.dbf', dbf)
+
+
+def lzw_literals(data: bytes) -> bytes:
+    """Valid TIFF LZW without matches, clearing before the code width would grow."""
+    codes = []
+    for start in range(0, len(data), 200):
+        codes.append(256)
+        codes.extend(data[start:start + 200])
+    codes.append(257)
+    bits = ''.join(f'{code:09b}' for code in codes)
+    bits += '0' * (-len(bits) % 8)
+    return int(bits, 2).to_bytes(len(bits) // 8, 'big')
+
+
+def float_tiff(path: Path, size: int, values: list[float]) -> None:
+    """A one-tile, LZW-compressed, single-band float TIFF."""
+    block = lzw_literals(struct.pack(f'<{len(values)}f', *values))
+    tags = [(256, 3, size), (257, 3, size), (258, 3, 32), (259, 3, 5), (277, 3, 1), (317, 3, 1),
+            (322, 3, size), (323, 3, size), (324, 4, 200), (325, 4, len(block)), (339, 3, 3)]
+    directory = struct.pack('<H', len(tags)) + b''.join(
+        struct.pack('<HHI', tag, kind, 1) + struct.pack('<I', value) for tag, kind, value in tags)
+    path.write_bytes(b'II*\0' + struct.pack('<I', 8) + directory.ljust(192, b'\0') + block)
 
 
 GRID = ('ncols 3\nnrows 3\nxllcorner 599900\nyllcorner 199500\n'
@@ -99,6 +122,65 @@ class TerrainPreparationTest(unittest.TestCase):
             rings = country_rings(archive)
             self.assertEqual(rings[0][0], (600000, 199600))
             self.assertEqual(rings[0][-1], rings[0][0])
+
+    def test_canton_selection_matches_only_the_named_record(self):
+        with TemporaryDirectory() as temporary:
+            archive = Path(temporary) / 'boundary.zip'
+            boundary_fixture(archive, layer='TLM_KANTONSGEBIET', value=b' ZH ')
+            self.assertEqual(canton_rings(archive, 'ZH')[0][0], (600000, 199600))
+            with self.assertRaises(ValueError):
+                canton_rings(archive, 'BE')
+
+    def test_crop_keeps_north_first_samples_and_margin(self):
+        from array import array
+        data = array('H', range(25))
+        metadata = {'width': 5, 'height': 5, 'spacingMeters': 100, 'west': 1000, 'north': 2000}
+        cropped, result = crop_grid(data, metadata, [1110, 1710, 1190, 1790], 10)
+        self.assertEqual(list(cropped), [11, 12, 16, 17])
+        self.assertEqual((result['width'], result['height']), (2, 2))
+        self.assertEqual((result['west'], result['north']), (1100, 1800))
+        self.assertEqual(result['missingCells'], 0)
+
+    def test_lzw_decodes_a_repeating_stream_with_growing_codes(self):
+        # 256 clear, A, 258 (AA), 259 (AAA), 257 end: exercises the code defined by its own use.
+        bits = ''.join(f'{code:09b}' for code in (256, 65, 258, 259, 257))
+        bits += '0' * (-len(bits) % 8)
+        self.assertEqual(lzw_decode(int(bits, 2).to_bytes(len(bits) // 8, 'big')), b'A' * 6)
+        self.assertEqual(lzw_decode(lzw_literals(bytes(range(256)) * 3)), bytes(range(256)) * 3)
+
+    def test_float_tiff_round_trip(self):
+        with TemporaryDirectory() as temporary:
+            path = Path(temporary) / 'tile.tif'
+            float_tiff(path, 2, [1.5, 2.5, 3.5, 408.25])
+            pixels, width, height = read_float_tiff(path.read_bytes())
+            self.assertEqual((list(pixels), width, height), ([1.5, 2.5, 3.5, 408.25], 2, 2))
+
+    def test_tile_bins_average_and_skip_missing_pixels(self):
+        from array import array
+        # Four 2 m pixels binned at 4 m: samples sit on multiples of 4 m.
+        pixels = array('f', [10, 20, 30, 40, 50, 60, -9999, 80, 90, 100, 110, 120, 130, 140, 150, 160])
+        bins = {(row, column): (total, count) for row, column, total, count in tile_bins(pixels, 4, 2, 4)}
+        self.assertEqual(bins[(0, 0)], (10, 1))
+        self.assertEqual(bins[(1, 1)], (60 + 100 + 110, 3), 'the missing pixel is excluded')
+        self.assertEqual(sum(count for _, count in bins.values()), 15)
+
+    def test_fine_grid_shares_coarse_outer_samples_and_fills_gaps(self):
+        from array import array
+        with TemporaryDirectory() as temporary:
+            tile = Path(temporary) / '2600-1199.tif'
+            float_tiff(tile, 500, [500.25] * 250000)
+            metadata = {'width': 2, 'height': 2, 'spacingMeters': 2000, 'west': 600000.0, 'north': 200000.0}
+            heights, fine, filled = fine_elevations(array('H', [100] * 4), metadata, 4, {'2600-1199': tile})
+            self.assertEqual((fine['width'], fine['height'], fine['spacingMeters']), (5, 5, 500))
+            self.assertEqual(fine['heightEncoding'], 'uint16-le-decimetres-LN02')
+            self.assertEqual(heights[0], 5002, 'averaged tile value, in decimetres')
+            self.assertEqual(heights[-1], 1000, 'no tile here: coarse grid, in decimetres')
+            self.assertGreater(filled, 0)
+
+    def test_tiles_for_mask_reach_across_tile_edges(self):
+        # One mask pixel centred at LV95 (2600900, 1199500): 300 m reaches the next tile east only.
+        metadata = {'width': 2, 'height': 2, 'spacingMeters': 1000, 'west': 600400.0, 'north': 200000.0}
+        self.assertEqual(tiles_for_mask(bytes([255]), 1, 1, metadata, 300), {'2600-1199', '2601-1199'})
 
     def test_invalid_geometry_is_rejected(self):
         with self.assertRaises(ValueError):

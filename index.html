@@ -4,18 +4,22 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#f6eae2" />
-    <meta name="description" content="A quiet map of sunlight, moonlight, and mountain shadows across Switzerland." />
-    <title>Switzerland — Light</title>
+    <meta name="description" content="A quiet map of sunlight, moonlight, and terrain shadows across the Canton of Zurich and Switzerland." />
+    <title>Canton of Zurich — Light</title>
     <link rel="icon" type="image/svg+xml" href="./icon.svg" />
   </head>
   <body>
     <main>
       <header class="masthead">
-        <h1>Switzerland<span class="divider" aria-hidden="true">/</span><span class="subtitle">Light</span></h1>
+        <h1><span id="region-title">Canton of Zurich</span><span class="divider" aria-hidden="true">/</span><span class="subtitle">Light</span></h1>
+        <div class="regions" role="group" aria-label="Map area">
+          <button type="button" data-region="zurich" aria-pressed="true">Zurich</button>
+          <button type="button" data-region="switzerland" aria-pressed="false">Switzerland</button>
+        </div>
       </header>
 
-      <div id="map" class="map" role="img" aria-label="North-up map of sunlight and moonlight on the mountains of Switzerland">
-        <img id="fallback" class="fallback" src="./terrain/fallback.png" fetchpriority="high" alt="Static afternoon relief of Switzerland" />
+      <div id="map" class="map" role="img" aria-label="North-up map of sunlight and moonlight on the terrain of the Canton of Zurich">
+        <img id="fallback" class="fallback" src="./terrain/zurich/fallback.png" fetchpriority="high" alt="Static afternoon relief of the Canton of Zurich" />
       </div>
       <div id="status" class="status" role="status">
         <span id="status-text">Loading terrain<span class="loading-dots" aria-hidden="true">…</span></span>
@@ -36,9 +40,8 @@
         </button>
         <div class="speeds" role="group" aria-label="Playback speed">
           <button type="button" data-speed="1" aria-pressed="true" aria-label="1 times speed">1×</button>
-          <button type="button" data-speed="10" aria-pressed="false" aria-label="10 times speed">10×</button>
-          <button type="button" data-speed="100" aria-pressed="false" aria-label="100 times speed">100×</button>
           <button type="button" data-speed="1000" aria-pressed="false" aria-label="1000 times speed">1000×</button>
+          <button type="button" data-speed="10000" aria-pressed="false" aria-label="10,000 times speed">10'000×</button>
         </div>
       </nav>
       <footer><a href="https://www.swisstopo.admin.ch/en/height-model-dhm25-200m" target="_blank" rel="noopener noreferrer">© swisstopo</a></footer>

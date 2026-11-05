@@ -1,0 +1,52 @@
+{
+  "width": 997,
+  "height": 1233,
+  "spacingMeters": 50,
+  "west": 668200.0,
+  "north": 284400.0,
+  "crs": "EPSG:21781",
+  "rowOrder": "north-to-south",
+  "heightEncoding": "uint16-le-decimetres-LN02",
+  "missingCells": 441422,
+  "countryBounds": [
+    669256.466,
+    223895.62899999996,
+    716900.3999999999,
+    283342.7180000001
+  ],
+  "schemaVersion": 1,
+  "sources": {
+    "elevation": {
+      "url": "https://data.geo.admin.ch/ch.swisstopo.digitales-hoehenmodell_25/data.zip",
+      "edition": "DHM25 / 200 m downloadable release",
+      "crs": "EPSG:21781",
+      "sha256": "9d283f198f829202e09859954d54553001f7ff1a79e3614ad47ac9cd98641887"
+    },
+    "boundary": {
+      "url": "https://data.geo.admin.ch/ch.swisstopo.swissboundaries3d/swissboundaries3d_2026-01/swissboundaries3d_2026-01_2056_5728.shp.zip",
+      "edition": "swissBOUNDARIES3D 2026-01",
+      "crs": "EPSG:2056",
+      "sha256": "a467d7eec8395d746253c68095c75a2540b52064bc83a6b35cf101efb625733d"
+    },
+    "fineElevation": {
+      "edition": "swissALTI3D 2 m, newest edition per tile",
+      "crs": "EPSG:2056",
+      "url": "https://data.geo.admin.ch/api/stac/v0.9/collections/ch.swisstopo.swissalti3d/items?bbox=8.33,47.13,9.02,47.72&limit=100",
+      "tiles": 1963,
+      "tileYears": [
+        2021,
+        2026
+      ],
+      "sha256": "781afb7bf11168354aaea9f26b0b1580ad9d1281e7d3ef529a03fe7a6e671373"
+    }
+  },
+  "boundaryAlignment": "LV95 to LV03 grid-origin shift (-2000000, -1000000 m); metre-scale residuals",
+  "edgeLimitation": "Terrain retained within source coverage; missing elevations are zero. Foreign terrain beyond coverage cannot cast shadows.",
+  "observer": {
+    "latitude": 47.41,
+    "longitude": 8.65,
+    "heightMeters": 500
+  },
+  "maskWidth": 1536,
+  "maskHeight": 1900
+}

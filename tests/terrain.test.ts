@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { decodeElevations, terrainVertices, validateMetadata } from '../src/terrain.ts';
+import { cullOutsideMask, decodeElevations, terrainVertices, validateMetadata } from '../src/terrain.ts';
 import { BufferAttribute, BufferGeometry } from 'three';
 
 const metadata = {
@@ -15,6 +15,22 @@ test('terrain decoding uses explicit little endian and rejects incomplete or imp
   assert.throws(() => decodeElevations(new ArrayBuffer(8), metadata), /Incomplete/);
   view.setUint16(0, 65000, true);
   assert.throws(() => decodeElevations(buffer, metadata), /Invalid/);
+});
+test('decimetre terrain decodes to fractional metres and keeps the height limit', () => {
+  const fine = { ...metadata, heightEncoding: 'uint16-le-decimetres-LN02' };
+  const buffer = new ArrayBuffer(18), view = new DataView(buffer);
+  for (let i = 0; i < 9; i++) view.setUint16(i * 2, 4087, true);
+  assert.ok(Math.abs(decodeElevations(buffer, fine)[0] - 408.7) < 1e-4);
+  view.setUint16(0, 60001, true);
+  assert.throws(() => decodeElevations(buffer, fine), /Invalid/);
+});
+test('culling removes only cells more than one cell from the mask', () => {
+  const wide = { ...metadata, width: 5, height: 2 };
+  const indices = terrainVertices(wide, new Uint16Array(10)).indices;
+  const mask = { width: 4, height: 1, data: [255, 0, 0, 0] };
+  const kept = cullOutsideMask(wide, indices, mask);
+  assert.deepEqual([...kept], [...indices.slice(0, 12)]);
+  assert.throws(() => cullOutsideMask(wide, indices.slice(0, 6), mask), /dimensions/);
 });
 test('north-first elevations and UVs preserve map orientation without exaggeration', () => {
   const heights = new Uint16Array([100,100,100,100,1000,100,100,100,100]);
@@ -51,4 +67,15 @@ test('prepared grid normals match Three.js area-weighted normals, including edge
       assert.ok(Math.abs(grid.normals[i * 3 + 2] - expected.getZ(i)) < 0.000001);
     }
   } finally { reference.dispose(); }
+});
+
+test('region observers mirror the prepared terrain metadata, and Zurich is the default', async () => {
+  const { DEFAULT_REGION, REGIONS } = await import('../src/regions.ts');
+  const { readFile } = await import('node:fs/promises');
+  assert.equal(DEFAULT_REGION, 'zurich');
+  for (const region of Object.values(REGIONS)) {
+    const prepared = JSON.parse(await readFile(`public/${region.terrainPath}metadata.json`, 'utf8'));
+    assert.deepEqual(prepared.observer, region.observer);
+    assert.deepEqual(validateMetadata(prepared), prepared);
+  }
 });
